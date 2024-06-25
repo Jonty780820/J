@@ -1,0 +1,81 @@
+# This is a basic workflow to help you get started with Actions
+import os
+import re
+import pytesseract
+from PyPDF2 import PdfReader
+from PIL import Image
+from pdf2image import convert_from_path
+from datetime import datetime
+
+def extract_text_from_pdf(pdf_path):
+    reader = PdfReader(pdf_path)
+    text = ''
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
+
+def extract_text_from_image(pdf_path):
+    images = convert_from_path(pdf_path)
+    text = ''
+    for image in images:
+        text += pytesseract.image_to_string(image)
+    return text
+
+def extract_date(text):
+    # Example regex for dates in the format DD/MM/YYYY or similar
+    date_pattern = re.compile(r'\b(\d{1,2}/\d{1,2}/\d{2,4})\b')
+    match = date_pattern.search(text)
+    if match:
+        date_str = match.group(1)
+        # Try to convert the found date to a standardized format
+        for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+    return None
+
+def sort_pdfs_by_date(pdf_dir):
+    pdf_files = [f for f in os.listdir(pdf_dir) if f.endswith('.pdf')]
+    pdf_dates = []
+
+    for pdf_file in pdf_files:
+        pdf_path = os.path.join(pdf_dir, pdf_file)
+        
+        # First, try to extract text from the PDF
+        text = extract_text_from_pdf(pdf_path)
+      
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Runs a single command using the runners shell
+      - name: Run a one-line script
+        run: echo Hello, world!
+
+      # Runs a set of commands using the runners shell
+      - name: Run a multi-line script
+        run: |
+          echo Add other actions to build,
+          echo test, and deploy your project.
